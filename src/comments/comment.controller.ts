@@ -1,23 +1,44 @@
-import { Controller, Get, Post, Body, Param } from '@nestjs/common';
-import { CommentsService } from './comments.service';
-import { Comment } from './comment.model';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Param,
+  Body,
+} from '@nestjs/common';
+import { CommentService } from './comments.service';
 
 @Controller('comments')
-export class CommentsController {
-  constructor(private readonly commentsService: CommentsService) {}
+export class CommentController {
+  constructor(private readonly comentariosService: CommentService) {}
 
   @Get()
-  getAllComments(): Comment[] {
-    return this.commentsService.getAllComments();
+  async getAllComentarios() {
+    return await this.comentariosService.getAllComments();
   }
 
-  @Get('post/:postId')
-  getCommentsByPostId(@Param('postId') postId: string): Comment[] {
-    return this.commentsService.getCommentsByPostId(postId);
+  @Get(':id')
+  async getComentario(@Param('id') id: string) {
+    return await this.comentariosService.getComment(id);
   }
 
   @Post()
-  createComment(@Body() commentData: Comment): Comment {
-    return this.commentsService.createComment(commentData);
+  async createComentario(@Body() comentarioData: any) {
+    return await this.comentariosService.createComment(comentarioData);
+  }
+
+  @Put(':id')
+  async updateComentario(
+    @Param('id') id: string,
+    @Body() comentarioData: any,
+  ): Promise<any> {
+    return await this.comentariosService.updateComment(id, comentarioData);
+  }
+
+  @Delete(':id')
+  async deleteComentario(@Param('id') id: string) {
+    await this.comentariosService.deleteComment(id);
+    return { message: 'Comentario deleted successfully' };
   }
 }

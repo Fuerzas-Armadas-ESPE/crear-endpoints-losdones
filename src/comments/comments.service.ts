@@ -1,62 +1,64 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
-import { v4 as uuidv4 } from 'uuid';
-import { Comment } from './comment.model';
-
-@Injectable()
-export class CommentsService {
-    private comments: Comment[] = [];
-
-    constructor() {
-        this.createComment({
-          id: uuidv4(),
-          content: 'Sabes que... a mi tambien me pasa lo mismo.',
-          postId: '1c12b365-48f4-4209-b6d9-52099c26222a'
-        });
+import {
+    Injectable,
+    InternalServerErrorException,
+    NotFoundException,
+  } from '@nestjs/common';
+  import { Model } from 'mongoose';
+  import { InjectModel } from '@nestjs/mongoose';
+  import { Comment } from './comment.model';
+  
+  @Injectable()
+  export class CommentService {
+    constructor(@InjectModel('Comment') private readonly commentModel: Model<Comment>) {}
+  
+    async getAllComments(): Promise<Comment[]> {
+      return await this.commentModel.find().exec();
+    }
+  
+    async getComment(id: string): Promise<Comment | null> {
+      try {
+        const comentario = await this.commentModel.findById(id).exec();
+        if (!comentario) {
+          throw new NotFoundException('Publicación no encontrada');
+        }
+        return comentario;
+      } catch (error: any) {
+        throw new InternalServerErrorException(error.message);
       }
-
-    getAllComments(): Comment[] {
-        return this.comments;
     }
-
-    getCommentsByPostId(postId: string): Comment[] {
-        return this.comments.filter(comment => comment.postId === postId);
+  
+    async createComment(comentarioData: any): Promise<Comment> {
+      try {
+        const createdComentario = new this.commentModel(comentarioData); // No es necesario asignar _id manualmente
+        return await createdComentario.save();
+      } catch (error: any) {
+        throw new InternalServerErrorException(error.message);
+      }
     }
-
-    getCommentById(id: string): Comment {
-        const comment = this.comments.find(comment => comment.id === id);
-        if (!comment) {
-            throw new NotFoundException('Comment not found');
+  
+    async updateComment(id: string, comentarioData: any): Promise<Comment | null> {
+      try {
+        const existingComentario = await this.commentModel.findById(id).exec();
+        if (!existingComentario) {
+          throw new NotFoundException('Publicación no encontrada');
         }
-        return comment;
+  
+        // Actualizar los campos de la publicación existente
+        existingComentario.comment = comentarioData.comentario;
+        existingComentario.autor = comentarioData.autor;
+  
+        // Guardar los cambios en la base de datos
+        return await existingComentario.save();
+      } catch (error: any) {
+        throw new InternalServerErrorException(error.message);
+      }
     }
-
-    createComment(commentData: Comment): Comment {
-        if (!commentData.content || !commentData.postId) {
-            throw new BadRequestException('Content and postId are required');
-        }
-
-        const newComment: Comment = {
-            id: uuidv4(),
-            content: commentData.content,
-            postId: commentData.postId,
-        };
-
-        this.comments.push(newComment);
-        return newComment;
+  
+    async deleteComment(id: string): Promise<void> {
+      try {
+        await this.commentModel.findByIdAndDelete(id).exec();
+      } catch (error: any) {
+        throw new InternalServerErrorException(error.message);
+      }
     }
-
-    updateComment(id: string, commentData: Comment): Comment {
-        const commentIndex = this.comments.findIndex(comment => comment.id === id);
-        if (commentIndex === -1) {
-            throw new NotFoundException('Comment not found');
-        }
-
-        this.comments[commentIndex] = { ...this.comments[commentIndex], ...commentData };
-
-        return this.comments[commentIndex];
-    }
-
-    deleteComment(id: string): void {
-        this.comments = this.comments.filter(comment => comment.id !== id);
-    }
-}
+  }
